@@ -1,0 +1,6 @@
+fsharp.core
+fsharp.data
+Serilog
+Serilog.aspnetcore
+giraffe
+RabbitMQ.Client

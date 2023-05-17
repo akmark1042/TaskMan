@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Messaging\ConnectionStore.fs" />
+    <Compile Include="Messaging\Publisher.fs" />
+    <Compile Include="Messaging\Consumer.fs" />
+    <Compile Include="Messaging\ConsumerDaemon.fs" />
+    <Compile Include="Http\Auth.fs" />
+    <Compile Include="Http\Handlers.fs" />
+    <Compile Include="Routes.fs" />
+    <Compile Include="TaskAPIStore.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="appsettings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TaskMan.Core\TaskMan.Core.fsproj" />
+  </ItemGroup>
+  <Import Project="..\.paket\Paket.Restore.targets" />
+</Project>

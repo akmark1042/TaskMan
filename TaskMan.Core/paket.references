@@ -1,0 +1,4 @@
+fsharp.core
+fsharp.data
+sqlprovider
+npgsql
