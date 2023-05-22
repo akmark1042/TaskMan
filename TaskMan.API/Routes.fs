@@ -20,8 +20,8 @@ let webApp staticToken : HttpFunc -> HttpContext -> HttpFuncResult =
                                              GET
                                              >=> choose [ route "" >=> handleGetAllTasks
                                                           routeCif "/index/%i" handleGetTaskById ]
-                                             PUT >=> routeCif "/index/%i/finish" handleFinishTaskAsync
-                                             DELETE >=> routef "/delete/%s" handleDeleteTaskAsync
+                                             PUT >=> routeCif "/index/%i/update" handleUpdateTaskAsync
+                                             DELETE >=> routef "/delete/%i" handleDeleteTaskAsync
                                         ]
                                     )
                     ]

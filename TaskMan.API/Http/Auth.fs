@@ -5,7 +5,7 @@ open Microsoft.AspNetCore.Http
 
 open Giraffe
 
-open TaskMan.Core.Types
+open TaskMan.API.Messaging.Types
 
 let staticBasic token =
     fun (next:HttpFunc) (ctx:HttpContext) -> 

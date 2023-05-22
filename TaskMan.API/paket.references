@@ -4,3 +4,5 @@ Serilog
 Serilog.aspnetcore
 giraffe
 RabbitMQ.Client
+MTA.Messaging.Client.RabbitMQ
+MTA.Messaging.Client.ProtoBufNet

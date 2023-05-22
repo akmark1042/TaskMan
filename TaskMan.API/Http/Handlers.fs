@@ -1,5 +1,6 @@
 module TaskMan.API.Http.Handlers
 
+open System
 open Microsoft.AspNetCore.Http
 
 open Giraffe
@@ -8,18 +9,7 @@ open TaskMan.Core.Interfaces
 open TaskMan.Core.Default
 open TaskMan.Core.Types
 open TaskMan.API.Messaging.Publisher
-
-let ofTask (item:Task) =
-    {
-        Id = item.Id
-        Task_Name = item.Task_Name
-        Type = (Option.defaultValue "" item.Type)
-        Status = item.Status
-        Created_on = item.Created_on
-        Created_by = item.Created_by
-        Last_updated = item.Last_updated
-        Updated_by = item.Updated_by
-    }
+open TaskMan.API.Messaging.Types
 
 let handleGetAllTasks =
     fun (next: HttpFunc) (ctx: HttpContext) -> task {
@@ -27,7 +17,7 @@ let handleGetAllTasks =
         let! result = GetAllTasksAsync store
 
         ctx.SetStatusCode 200
-        return! json (result |> Seq.map ofTask |> Seq.toList) next ctx
+        return! json result next ctx
     }
 
 let handleGetTaskById idx =
@@ -45,17 +35,8 @@ let handleGetTaskById idx =
 
 let handleAddTaskAsync =
     fun (next: HttpFunc) (ctx: HttpContext) -> task {
-        let! bindTask = ctx.BindJsonAsync<TaskDTO>()
-        let switch = TaskDTO.toCreate bindTask
-        let event:CreateTask = {
-                Task_Name = switch.Task_Name
-                Type = switch.Type
-                Status = switch.Status
-                Created_on = switch.Created_on
-                Created_by = switch.Created_by
-                Last_updated = switch.Last_updated
-                Updated_by = switch.Updated_by
-            }
+        let! createTask = ctx.BindJsonAsync<CreateTaskDTO>()
+        let event = CreateTaskDTO.toEvent createTask (Security.Principal.WindowsIdentity.GetCurrent().Name)
 
         let publisher = ctx.GetService<Publisher>()
         publisher.DispatchAddSubscriptionEvent(event)
@@ -63,10 +44,14 @@ let handleAddTaskAsync =
         return! Successful.NO_CONTENT next ctx
     }
 
-let handleFinishTaskAsync idx =
+let handleUpdateTaskAsync (idx: int) =
     fun (next: HttpFunc) (ctx: HttpContext) -> task {
-        let event:UpdateTaskStatusDTO = {
+        let! updateTask = ctx.BindJsonAsync<UpdateTaskStatusEvent>()
+        let event:UpdateTaskStatusEvent = {
             Id = idx
+            Type = updateTask.Type
+            Status = updateTask.Status
+            Updated_by = updateTask.Updated_by
         }
 
         let publisher = ctx.GetService<Publisher>()
@@ -75,10 +60,10 @@ let handleFinishTaskAsync idx =
         return! Successful.NO_CONTENT next ctx
     }
 
-let handleDeleteTaskAsync (email:string) =
+let handleDeleteTaskAsync (idx:int) =
     fun (next: HttpFunc) (ctx: HttpContext) -> task {
-        let event:DeleteTaskDTO = {
-                Task_Name = email
+        let event:DeleteTaskEvent = {
+                Id = idx
             }
 
         let publisher = ctx.GetService<Publisher>()

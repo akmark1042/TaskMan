@@ -12,8 +12,8 @@ let AddTaskAsync (store: ITaskStore) str =
 let GetTaskByIdAsync (store: ITaskStore) idx =
      store.getTaskByIdAsync idx
 
-let FinishTaskAsync (store: ITaskStore) idx =
-     store.finishTaskAsync idx
+let UpdateStatusAsync (store: ITaskStore) idx =
+     store.updateStatusAsync idx
 
 let DeleteTaskAsync (store: ITaskStore) id =
      store.deleteTaskAsync id

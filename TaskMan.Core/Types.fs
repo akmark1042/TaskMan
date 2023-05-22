@@ -35,6 +35,18 @@ type RootConfig =
         Queue: string
     }
 
+type TaskDTO =
+    {
+        Id: int
+        Task_Name: string
+        Type: string
+        Status: int
+        Created_on: DateTimeOffset
+        Created_by: string
+        Last_updated: DateTimeOffset
+        Updated_by: string
+    }
+
 type Task =
     {
         Id: int
@@ -48,48 +60,11 @@ type Task =
     }
 
 module Task =
-    let toDTO (item:Task) : Task =
+    let ofTask (item:Task) : Task =
         {
             Id = item.Id
             Task_Name = item.Task_Name
             Type = item.Type
-            Status = item.Status
-            Created_on = item.Created_on
-            Created_by = item.Created_by
-            Last_updated = item.Last_updated
-            Updated_by = item.Updated_by
-        }
-
-type CreateTask =
-    {
-        Task_Name: string
-        Type: string
-        Status: int
-        Created_on: DateTimeOffset
-        Created_by: string
-        Last_updated: DateTimeOffset
-        Updated_by: string
-        
-    }
-
-type TaskDTO =
-    {
-        Id: int
-        Task_Name: string
-        Type: string
-        Status: int
-        Created_on: DateTimeOffset
-        Created_by: string
-        Last_updated: DateTimeOffset
-        Updated_by: string
-    }
-
-module TaskDTO =
-    let toTask (item:TaskDTO) : Task =
-        {
-            Id = item.Id
-            Task_Name = item.Task_Name
-            Type = Some item.Type
             Status = item.Status
             Created_on = item.Created_on
             Created_by = item.Created_by
@@ -97,10 +72,11 @@ module TaskDTO =
             Updated_by = item.Updated_by
         }
     
-    let toCreate (item:TaskDTO) : CreateTask =
+    let toTaskDTO (item:Task) : TaskDTO =
         {
+            Id = item.Id
             Task_Name = item.Task_Name
-            Type = item.Type
+            Type = (Option.defaultValue "" item.Type)
             Status = item.Status
             Created_on = item.Created_on
             Created_by = item.Created_by
@@ -108,14 +84,29 @@ module TaskDTO =
             Updated_by = item.Updated_by
         }
 
-[<Literal>]
-let ADD_TASK_ROUTING_KEY = "add.task"
+type TaskType =
+    Default
+    | UserGenerated
+    | Admin
+    | Update
+    | Unknown
 
-[<Literal>]
-let DELETE_TASK_ROUTING_KEY = "delete.task"
+type CreateTask =
+    {
+        Task_Name: string
+        Type: TaskType
+        Status: int
+        Created_by: string
+    }
 
-[<Literal>]
-let UPDATE_TASK_ROUTING_KEY = "update.task"
+module TaskType =
+    let parse (str:string) =
+        match str.ToLower() with
+        | "default" -> Default
+        | "user_generated" -> UserGenerated
+        | "admin" -> Admin
+        | "update" -> Update
+        | _ -> Unknown
 
 type Status =
    | New = 0
@@ -126,30 +117,23 @@ type Status =
    | Complete = 5
    | Deprecated = 6
 
-type DeleteTaskDTO =
+type CreateTaskEvent =
     {
         Task_Name: string
+        Type: TaskType
+        Status: int
+        Created_by: string
     }
 
-type UpdateTaskStatusDTO =
+type UpdateTaskStatusEvent =
+    {
+        Id: int
+        Type: string
+        Status: int
+        Updated_by: string
+    }
+
+type DeleteTaskEvent =
     {
         Id: int
     }
-
-type AuthToken = AuthToken of String
-
-module AuthToken =
-    let unwrap (AuthToken token) = token
-
-    let validate (headers:string list) =
-        match headers with
-        | [] -> Error "No headers provided."
-        | (value::_) -> Ok value
-    
-    let getToken (header:string) =
-        if header.StartsWith("Basic ")
-        then header.Replace("Basic ", "") |> Ok
-        else Error "Not a basic authentication token."
-    
-    let make (authorization:string list) =
-        authorization |> validate |> Result.bind getToken |> Result.map AuthToken

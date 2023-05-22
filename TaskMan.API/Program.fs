@@ -142,25 +142,6 @@ let useCors (app: WebApplication) =
     app.UseCors(configureCors) |> ignore
     app
 
-let addServices (bldr: WebApplicationBuilder) =
-    bldr.Services
-        .Configure<RootConfig>(bldr.Configuration)
-        .AddScoped<TaskDb.dataContext>(fun provider ->
-            let config = provider.GetRequiredService<IOptions<RootConfig>>()
-            TaskDb.GetDataContext(config.Value.Database.ConnectionString, selectOperations = SelectOperations.DatabaseSide)
-        )
-        .AddSingleton<ConnectionStore>(fun provider ->
-            let config = provider.GetRequiredService<IOptions<RootConfig>>()
-            new ConnectionStore(config.Value.RabbitMQConnection))
-        .AddScoped<Publisher>(fun provider ->
-            let config = provider.GetRequiredService<IOptions<RootConfig>>()
-            let conn = provider.GetRequiredService<ConnectionStore>().GetDefaultConnection()
-            let logger = provider.GetRequiredService<Serilog.ILogger>()
-            new Publisher(conn, logger, config.Value))
-        .AddHostedService<ConsumerDaemon>()
-        .AddScoped<ITaskStore,TaskStore>() |> ignore
-    bldr
-
 let withServices bldr =
     bldr |> configureServices (fun context services ->
         services

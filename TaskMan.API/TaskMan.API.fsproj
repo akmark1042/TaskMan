@@ -5,6 +5,7 @@
     <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Messaging\Types.fs" />
     <Compile Include="Messaging\ConnectionStore.fs" />
     <Compile Include="Messaging\Publisher.fs" />
     <Compile Include="Messaging\Consumer.fs" />
@@ -22,6 +23,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TaskMan.Core\TaskMan.Core.fsproj" />
+    <ProjectReference Include="..\TaskMan.Protobuf\TaskMan.Protobuf.csproj" />
   </ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

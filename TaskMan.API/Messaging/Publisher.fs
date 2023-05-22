@@ -5,14 +5,31 @@ open System.Text.Json
 
 open RabbitMQ.Client
 
+open MTA.Messaging.Client.ProtoBufNet
+
 open TaskMan.Core.Types
+open TaskMan.API.Messaging.Types
 
 type Publisher (connection:IConnection, logger: Serilog.ILogger, config:RootConfig) =
     let mutable channel = connection.CreateModel()
     let mutable disposed = false
 
-    member this.DispatchDeleteTaskEvent(event:DeleteTaskDTO) =
-        let body = JsonSerializer.SerializeToUtf8Bytes event |> ReadOnlyMemory
+    member this.DispatchAddSubscriptionEvent(event:CreateTaskEvent) =
+        //let body = JsonSerializer.SerializeToUtf8Bytes event |> ReadOnlyMemory
+
+        let body = event |> CreateTaskEventDTO.fromDomain |> CreateTaskEventDTO.toProtobuf |> toReadOnlyMemory
+        let props = channel.CreateBasicProperties()
+        props.Persistent <- true
+        
+        channel.BasicPublish(
+            exchange = config.Exchange,
+            routingKey = ADD_TASK_ROUTING_KEY,
+            basicProperties = props,
+            body = body
+        )
+
+    member this.DispatchDeleteTaskEvent(event:DeleteTaskEvent) =
+        let body = event |> DeleteTaskEventDTO.fromDomain |> DeleteTaskEventDTO.toProtobuf |> toReadOnlyMemory
         let props = channel.CreateBasicProperties()
         props.Persistent <- true
         
@@ -23,26 +40,14 @@ type Publisher (connection:IConnection, logger: Serilog.ILogger, config:RootConf
             body = body
         )
 
-    member this.DispatchUpdateSubscriptionEvent(event:UpdateTaskStatusDTO) =
-        let body = JsonSerializer.SerializeToUtf8Bytes event |> ReadOnlyMemory
+    member this.DispatchUpdateSubscriptionEvent(event:UpdateTaskStatusEvent) =
+        let body = event |> UpdateTaskStatusEventDTO.fromDomain |> UpdateTaskStatusEventDTO.toProtobuf |> toReadOnlyMemory
         let props = channel.CreateBasicProperties()
         props.Persistent <- true
         
         channel.BasicPublish(
             exchange = config.Exchange,
             routingKey = UPDATE_TASK_ROUTING_KEY,
-            basicProperties = props,
-            body = body
-        )
-
-    member this.DispatchAddSubscriptionEvent(event:CreateTask) =
-        let body = JsonSerializer.SerializeToUtf8Bytes event |> ReadOnlyMemory
-        let props = channel.CreateBasicProperties()
-        props.Persistent <- true
-        
-        channel.BasicPublish(
-            exchange = config.Exchange,
-            routingKey = ADD_TASK_ROUTING_KEY,
             basicProperties = props,
             body = body
         )

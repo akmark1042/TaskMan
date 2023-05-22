@@ -6,6 +6,9 @@ open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Options
 open Microsoft.Extensions.Hosting
 
+open MTA.Messaging.Client.RabbitMQ.Common
+open MTA.Messaging.Client.RabbitMQ.Consumer
+
 open TaskMan.Core.Types
 open Consumer
 
@@ -19,46 +22,22 @@ type internal ConsumerDaemon (provider:IServiceProvider, logger:Serilog.ILogger)
             try
                 let channel = defaultConnection.CreateModel()
 
-                channel.ExchangeDeclare(
-                        exchange = config.Exchange,
-                        ``type`` = RabbitMQ.Client.ExchangeType.Topic.ToString(),
-                        durable = true,
-                        autoDelete = false,
-                        arguments = null
-                    )
+                let exchangeConfig = {
+                    defaultExchangeConfig config.Exchange with Type = ExchangeType.Topic
+                }
+
+                createExchange channel exchangeConfig
 
                 logger.Information("Exchange Declared")
 
-                channel.QueueDeclare(
-                    queue = config.Queue,
-                    durable = true,
-                    exclusive = false,
-                    autoDelete = false,
-                    arguments = null
-                ) |> ignore
-
-                channel.QueueBind(
-                    config.Queue,
-                    config.Exchange,
-                    "#",
-                    null
-                )
+                let consumerConfig = defaultConsumerConfig config.Exchange config.Queue
+                let consumerChannel = defaultConnection.CreateModel()
 
                 logger.Information("Queue declared and bound")
-                
-                let consumer = Consumer(channel, logger, provider)
-                
-                let consumerTag = "consumertag1"
 
-                channel.BasicConsume(
-                    queue = config.Queue,
-                    autoAck = false,
-                    consumerTag = consumerTag,
-                    noLocal = true,
-                    exclusive = false,
-                    arguments = null,
-                    consumer = consumer
-                ) |> ignore
+                use handle = Consumer(consumerChannel, logger, provider) |> startConsumer consumerChannel consumerConfig
+                do! Async.AwaitWaitHandle cancellationToken.WaitHandle |> Async.Ignore
+                handle.Close()                
 
                 logger.Information("Consumer basic complete")
             with

@@ -4,22 +4,13 @@ open System
 open System.Net
 open System.Net.Http
 open System.Net.Http.Json
+open System.Text
+open System.Text.Json
 
 open TaskMan.Core.Types
+open TaskMan.Client.Types
 open System.Net.Http.Headers
 
-module Task =
-    let ofTask (item:Task) =
-        {
-            Id = item.Id
-            Task_Name = item.Task_Name
-            Type = (Option.defaultValue "" item.Type)
-            Status = item.Status
-            Created_on = item.Created_on
-            Created_by = item.Created_by
-            Last_updated = item.Last_updated
-            Updated_by = item.Updated_by
-        }
 
 let getClient() =
     let result = new HttpClient()
@@ -53,38 +44,28 @@ let getTaskAsync (idx:int)  =
             return result |> Some
     }
 
-let addTaskAsync (newTask: CreateTask) =
-    async {
-        let newItem = {
-            Task_Name = newTask.Task_Name
-            Type = newTask.Type
-            Status = 0
-            Created_on = DateTimeOffset.Now
-            Created_by = System.Security.Principal.WindowsIdentity.GetCurrent().Name
-            Last_updated = DateTimeOffset.Now
-            Updated_by = newTask.Updated_by
-        }
-
-        use client = getClient()
-        let! response = client.PostAsJsonAsync("tasks/create", newItem) |> Async.AwaitTask
-
-        response.EnsureSuccessStatusCode() |> ignore
-        
-        return newItem
-    }
-
-let finishTaskAsync (idx:int) =
+let addTaskAsync (newTask: NewTask) =
     async {
         use client = getClient()
-        let! response = (sprintf "tasks/index/%i/finish" idx, null) |> client.PutAsync |> Async.AwaitTask
-
+        let! response = client.PostAsJsonAsync("tasks/create", newTask) |> Async.AwaitTask
         response.EnsureSuccessStatusCode() |> ignore
     }
 
-let deleteTaskAsync (id:string) =
+let updateStatusAsync (idx:int) (upd:UpdateTask) =
     async {
         use client = getClient()
-        let! response = sprintf "tasks/delete/%s" id |> client.DeleteAsync |> Async.AwaitTask
+        let httpContent = new StringContent(JsonSerializer.Serialize(upd), Encoding.UTF8, "application/json")
+        let! response = (sprintf "tasks/index/%i/update" idx, httpContent) |> client.PutAsync |> Async.AwaitTask
+        if response.StatusCode = HttpStatusCode.NotFound then
+            return 0
+        else
+            return 1
+    }
+
+let deleteTaskAsync (id:int) =
+    async {
+        use client = getClient()
+        let! response = sprintf "tasks/delete/%i" id |> client.DeleteAsync |> Async.AwaitTask
         
         if response.StatusCode = HttpStatusCode.NotFound then
             return 0

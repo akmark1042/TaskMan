@@ -1,12 +1,14 @@
 ﻿module TaskMan.Client.Program
 
+open System
+
 open TaskMan.Client.Store
 open TaskMan.Core.Types
-open System
+open TaskMan.Client.Types
 
 let rec loopAsync() =
     async {
-        let operator = 6
+        let operator = 3
 
         printfn "Pick a number between 1 and 6"
         let command = Console.ReadLine()
@@ -16,14 +18,12 @@ let rec loopAsync() =
         | true, i ->
             match i with
             | 1 ->
-                let createNew = {
-                    Task_Name = "Nome"
-                    Type = "testType"
+                printfn "Enter the name of the new task."
+                let name = Console.ReadLine()
+                let (createNew:NewTask) = {
+                    Task_Name = name
+                    Type = TaskType.Default.ToString()
                     Status = 0
-                    Created_on = DateTimeOffset.Now
-                    Created_by = System.Security.Principal.WindowsIdentity.GetCurrent().Name
-                    Last_updated = DateTimeOffset.Now
-                    Updated_by = System.Security.Principal.WindowsIdentity.GetCurrent().Name
                 }
 
                 let! newItem = addTaskAsync createNew
@@ -38,17 +38,19 @@ let rec loopAsync() =
 
                 return! loopAsync()
             | 3 ->
-                //get all
                 let! allItems = getAllAsync()
                 printfn "%A" allItems
                 return! loopAsync()
             | 4 ->
-                //change status to finished
-                do! finishTaskAsync operator
+                let (upd:UpdateTask) = {
+                    Type = TaskType.Update.ToString()
+                    Status = 3
+                    Updated_by = System.Security.Principal.WindowsIdentity.GetCurrent().Name
+                }
+                let! result = updateStatusAsync operator upd
                 return! loopAsync()
             | 5 ->
-                //remove
-                let! returnInt = deleteTaskAsync "Girdwood"
+                let! returnInt = deleteTaskAsync operator
                 printf "%i" returnInt
                 return! loopAsync()
             | 6 ->

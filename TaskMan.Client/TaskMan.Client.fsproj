@@ -4,6 +4,7 @@
     <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Types.fs" />
     <Compile Include="TaskMan.Client.Store.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

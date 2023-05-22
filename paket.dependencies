@@ -1,11 +1,16 @@
 storage: none
 framework: net6.0
 source https://api.nuget.org/v3/index.json
+source https://artifactory.alasconnect.com/artifactory/api/nuget/mta_nuget/
 
 nuget fsharp.data
 nuget giraffe
 nuget npgsql
+nuget protobuf-net
+nuget protobuf-net.buildtools
 nuget Serilog
 nuget Serilog.aspnetcore
 nuget sqlprovider
 nuget RabbitMQ.Client
+nuget MTA.Messaging.Client.RabbitMQ
+nuget MTA.Messaging.Client.ProtoBufNet

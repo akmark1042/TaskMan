@@ -1,14 +1,17 @@
 module TaskMan.API.Messaging.Consumer
 
 open System
-open System.Text.Json
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Options
 
 open RabbitMQ.Client
 
+open MTA.Messaging.Client.ProtoBufNet
+
 open TaskMan.Core.Types
 open TaskMan.Core
+open TaskMan.Protobuf
+open TaskMan.API.Messaging.Types
 
 let handleEvent<'T>
     (logger: Serilog.ILogger)
@@ -60,51 +63,27 @@ type Consumer(channel:IModel, logger: Serilog.ILogger, provider:IServiceProvider
             let store = scope.ServiceProvider.GetRequiredService<ITaskStore>()
 
             match routingKey with
-            | DELETE_TASK_ROUTING_KEY ->
-                let dto:Result<DeleteTaskDTO, string> =
-                    try
-                        logger.Information("deserializing")
-                        JsonSerializer.Deserialize<DeleteTaskDTO>(body.ToArray()) |> Ok
-                    with
-                        | _ -> Error "Could not deserialize the event."
-
-                logger.Information($"DTO serialized successfully: %b{dto |> Result.isOk}" )
-                this.HandleEvent routingKey redelivered deliveryTag dto (fun x _ -> store.deleteTaskAsync x.Task_Name |> Async.RunSynchronously |> ignore)
-            
             | UPDATE_TASK_ROUTING_KEY ->
-                let dto:Result<UpdateTaskStatusDTO, string> =
-                    try
-                        logger.Information("deserializing")
-                        JsonSerializer.Deserialize<UpdateTaskStatusDTO>(body.ToArray()) |> Ok
-                    with
-                        | _ -> Error "Could not deserialize the event."
+                let dto =
+                    deserializeEvent<UpdateTaskStatusEventProtoDTO>(body) |> UpdateTaskStatusEventDTO.ofProtobuf
+                
+                logger.Information($"DTO serialized successfully: %O{dto}" )
+                this.HandleEvent routingKey redelivered deliveryTag ((UpdateTaskStatusEventDTO.toDomain dto dto.Updated_by) |> Ok) (fun x _bool -> store.updateStatusAsync x.Id x |> Async.RunSynchronously)
 
-                logger.Information($"DTO serialized successfully: %b{dto |> Result.isOk}" )
-                this.HandleEvent routingKey redelivered deliveryTag dto (fun x _ -> store.finishTaskAsync x.Id |> Async.RunSynchronously |> ignore)
+            | DELETE_TASK_ROUTING_KEY ->
+                let dto =
+                    deserializeEvent<DeleteTaskEventProtoDTO>(body) |> DeleteTaskEventDTO.ofProtobuf
 
+                logger.Information($"DTO serialized successfully: %O{dto}" )
+                this.HandleEvent routingKey redelivered deliveryTag (dto |> DeleteTaskEventDTO.toDomain |> Ok) (fun x _bool -> store.deleteTaskAsync x.Id |> Async.RunSynchronously |> ignore)
+            
             | ADD_TASK_ROUTING_KEY ->
                 let dto =
-                    try
-                        logger.Information("deserializing")
-                        JsonSerializer.Deserialize<CreateTask>(body.ToArray()) |> Ok
-                    with
-                        | _ -> Error "Could not deserialize the event."
+                    deserializeEvent<CreateTaskEventProtoDTO>(body) |> CreateTaskEventDTO.ofProtobuf
                     
-                logger.Information($"DTO serialized successfully: %b{dto |> Result.isOk}" )
-                
-                let newSub:Result<CreateTask, string> = 
-                    dto |> Result.map (fun x -> {
-                        Task_Name = x.Task_Name
-                        Type = x.Type
-                        Status = x.Status
-                        Created_on = x.Created_on
-                        Created_by = x.Created_by
-                        Last_updated = x.Last_updated
-                        Updated_by = x.Updated_by
-                    })
-                
-                this.HandleEvent routingKey redelivered deliveryTag newSub (fun x _bool -> store.addTaskAsync x |> Async.RunSynchronously |> ignore)
-            
+                logger.Information($"DTO serialized successfully: %O{dto}" )
+                this.HandleEvent routingKey redelivered deliveryTag (dto |> CreateTaskEventDTO.toDomain |> Ok) (fun x _bool -> store.addTaskAsync x |> Async.RunSynchronously |> ignore)
+
             | _ -> channel.BasicReject(deliveryTag, false)
         with
             | _ -> channel.BasicReject(deliveryTag, true)
